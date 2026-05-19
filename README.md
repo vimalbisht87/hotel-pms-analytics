@@ -1,5 +1,9 @@
 # Hotel PMS Analytics Dashboard
 
+![Metabase](https://img.shields.io/badge/Metabase-BI-blue)
+![SQL Server](https://img.shields.io/badge/SQL%20Server-Database-red)
+![Hospitality Analytics](https://img.shields.io/badge/Domain-Hospitality-green)
+
 A complete Hotel PMS Reporting Framework built using Metabase and SQL Server.
 
 ---
@@ -139,9 +143,7 @@ All SQL queries are available in the `/sql` folder.
 
 # Demo Video
 
-Watch Full Dashboard Demo Here:
-
-https://youtu.be/l1CmQ8oLUG0?si=JrE4DvvqSqMM5gMD
+▶️ [Watch Full Dashboard Demo](https://youtu.be/l1CmQ8oLUG0?si=JrE4DvvqSqMM5gMD)
 ---
 
 # Author
