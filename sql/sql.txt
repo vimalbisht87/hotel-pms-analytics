@@ -1,1 +1,504 @@
+# Hotel PMS Analytics — Category Wise SQL Queries
 
+# CATEGORY 1 — MANAGEMENT / EXECUTIVE DASHBOARD
+
+## File Name: executive_dashboard.sql
+
+```sql
+-- =============================================
+-- EXECUTIVE DASHBOARD SQL QUERIES
+-- =============================================
+
+-- 1. Total Revenue KPI
+SELECT
+    SUM(Total_Revenue) AS Total_Revenue
+FROM resort
+WHERE CAST(Booking_Date AS DATE)=CAST(GETDATE() AS DATE);
+
+
+-- 2. Occupancy Percentage
+SELECT
+(
+COUNT(DISTINCT CASE
+WHEN Reservation_Status IN ('Checked Out','In House')
+THEN Room_Number END) * 100.0 /
+COUNT(DISTINCT Room_Number)
+) AS Occupancy_Percentage
+FROM resort;
+
+
+-- 3. ADR (Average Daily Rate)
+SELECT
+AVG(Room_Rate) AS ADR
+FROM resort
+WHERE Reservation_Status IN ('Checked Out','In House');
+
+
+-- 4. RevPAR
+SELECT
+SUM(Room_Rate) * 1.0 /
+COUNT(DISTINCT Room_Number) AS RevPAR
+FROM resort
+WHERE Reservation_Status IN ('Checked Out','In House');
+
+
+-- 5. Monthly Revenue Trend
+SELECT
+YEAR(Arrival_Date) AS Year,
+MONTH(Arrival_Date) AS Month,
+SUM(Total_Revenue) AS Revenue
+FROM resort
+GROUP BY YEAR(Arrival_Date), MONTH(Arrival_Date)
+ORDER BY Year, Month;
+
+
+-- 6. Revenue Breakdown by Department
+SELECT 'Room Revenue' AS Department, SUM(Room_Rate) AS Revenue FROM resort
+UNION ALL
+SELECT 'F&B Revenue', SUM([F&B_Revenue]) FROM resort
+UNION ALL
+SELECT 'Spa Revenue', SUM(Spa_Revenue) FROM resort
+UNION ALL
+SELECT 'Laundry Revenue', SUM(Laundry_Revenue) FROM resort
+UNION ALL
+SELECT 'Other Revenue', SUM(Other_Revenue) FROM resort;
+
+
+-- 7. OTA Commission Analysis
+SELECT
+Source_Channel,
+SUM(Total_Revenue) AS Gross_Revenue,
+SUM(OTA_Commission) AS Total_Commission,
+SUM(Net_Revenue) AS Net_Revenue,
+(SUM(OTA_Commission)*100.0/SUM(Total_Revenue)) AS Commission_Percent
+FROM resort
+WHERE Source_Channel IN ('Agoda','MakeMyTrip','Booking.com')
+GROUP BY Source_Channel;
+
+
+-- 8. Room Type Performance
+SELECT
+Room_Type,
+COUNT(*) AS Total_Bookings,
+AVG(Room_Rate) AS Avg_Rate,
+SUM(Total_Revenue) AS Total_Revenue
+FROM resort
+GROUP BY Room_Type
+ORDER BY Total_Revenue DESC;
+
+
+-- 9. Cancellation & No Show Analysis
+SELECT
+COUNT(*) AS Total_Bookings,
+SUM(CASE WHEN Cancellation_Flag='Yes' THEN 1 ELSE 0 END) AS Cancelled,
+SUM(CASE WHEN No_Show='Yes' THEN 1 ELSE 0 END) AS No_Show,
+SUM(CASE WHEN Cancellation_Flag='Yes' THEN Room_Rate*Nights ELSE 0 END) AS Potential_Loss
+FROM resort;
+
+
+-- 10. Guest Feedback Analysis
+SELECT
+Room_Type,
+AVG(Guest_Feedback_Score) AS Avg_Score
+FROM resort
+WHERE Guest_Feedback_Score IS NOT NULL
+GROUP BY Room_Type
+ORDER BY Avg_Score DESC;
+```
+
+---
+
+# CATEGORY 2 — FRONT DESK / OPERATIONS DASHBOARD
+
+## File Name: frontdesk_dashboard.sql
+
+```sql
+-- =============================================
+-- FRONT DESK DASHBOARD SQL QUERIES
+-- =============================================
+
+-- 1. Today's Check-ins
+SELECT
+Reservation_ID,
+Guest_Name,
+Room_Number,
+Room_Type,
+Adults,
+Children,
+VIP_Flag,
+Membership_Tier,
+Arrival_Time
+FROM resort
+WHERE CAST(Arrival_Date AS DATE)=CAST(GETDATE() AS DATE)
+AND Reservation_Status NOT IN ('Cancelled','No Show','Checked Out')
+ORDER BY VIP_Flag DESC, Arrival_Time;
+
+
+-- 2. Today's Check-outs
+SELECT
+Reservation_ID,
+Guest_Name,
+Room_Number,
+Room_Type,
+Total_Revenue,
+Payment_Mode,
+VIP_Flag
+FROM resort
+WHERE CAST(Departure_Date AS DATE)=CAST(GETDATE() AS DATE)
+AND Reservation_Status='In House'
+ORDER BY VIP_Flag DESC;
+
+
+-- 3. Overdue Check-outs
+SELECT
+Reservation_ID,
+Guest_Name,
+Room_Number,
+Departure_Date,
+Checkout_Time,
+Late_Checkout
+FROM resort
+WHERE CAST(Departure_Date AS DATE) < CAST(GETDATE() AS DATE)
+AND Reservation_Status='In House';
+
+
+-- 4. Current Room Status
+SELECT
+Room_Number,
+Room_Type,
+Room_Status,
+Housekeeping_Status,
+Maintenance_Flag,
+Reservation_ID,
+Guest_Name
+FROM resort
+ORDER BY Room_Number;
+
+
+-- 5. Vacant Clean Rooms
+SELECT
+Room_Number,
+Room_Type
+FROM resort
+WHERE Room_Status='Vacant'
+AND Housekeeping_Status='Clean'
+AND Maintenance_Flag='No';
+
+
+-- 6. Dirty Rooms
+SELECT
+Room_Number,
+Room_Type,
+Room_Status,
+Housekeeping_Status
+FROM resort
+WHERE Housekeeping_Status='Dirty'
+ORDER BY Room_Number;
+
+
+-- 7. Maintenance Required Rooms
+SELECT
+Room_Number,
+Room_Type,
+Housekeeping_Status,
+Maintenance_Flag,
+Reservation_ID
+FROM resort
+WHERE Maintenance_Flag='Yes';
+
+
+-- 8. VIP Guests
+SELECT
+Reservation_ID,
+Guest_Name,
+Room_Number,
+Room_Type,
+Arrival_Date,
+Departure_Date,
+Membership_Tier,
+VIP_Flag
+FROM resort
+WHERE VIP_Flag='Yes'
+AND Reservation_Status NOT IN ('Cancelled','No Show');
+
+
+-- 9. Today's No Show Alerts
+SELECT
+Reservation_ID,
+Guest_Name,
+Room_Type,
+Arrival_Date,
+No_Show
+FROM resort
+WHERE CAST(Arrival_Date AS DATE)=CAST(GETDATE() AS DATE)
+AND No_Show='Yes';
+
+
+-- 10. Walk-in Bookings
+SELECT
+Reservation_ID,
+Guest_Name,
+Room_Type,
+Room_Rate,
+Market_Segment,
+Booking_User
+FROM resort
+WHERE CAST(Booking_Date AS DATE)=CAST(GETDATE() AS DATE)
+AND Market_Segment='Walk-In';
+```
+
+---
+
+# CATEGORY 3 — FINANCE DASHBOARD
+
+## File Name: finance_dashboard.sql
+
+```sql
+-- =============================================
+-- FINANCE DASHBOARD SQL QUERIES
+-- =============================================
+
+-- 1. Daily Revenue Summary
+SELECT
+CAST(Booking_Date AS DATE) AS Date,
+COUNT(*) AS Bookings,
+SUM(Room_Rate) AS Room_Revenue,
+SUM([F&B_Revenue]) AS FandB_Revenue,
+SUM(Laundry_Revenue) AS Laundry_Revenue,
+SUM(Spa_Revenue) AS Spa_Revenue,
+SUM(Other_Revenue) AS Other_Revenue,
+SUM(Total_Revenue) AS Total_Revenue,
+SUM(Tax_Amount) AS Total_Tax,
+SUM(Net_Revenue) AS Net_Revenue
+FROM resort
+GROUP BY CAST(Booking_Date AS DATE)
+ORDER BY Date DESC;
+
+
+-- 2. Payment Mode Collection
+SELECT
+Payment_Mode,
+COUNT(*) AS Transactions,
+SUM(Total_Revenue) AS Amount,
+AVG(Total_Revenue) AS Avg_Transaction
+FROM resort
+GROUP BY Payment_Mode
+ORDER BY Amount DESC;
+
+
+-- 3. Currency Wise Revenue
+SELECT
+Currency,
+COUNT(*) AS Transactions,
+SUM(Total_Revenue) AS Total_Amount
+FROM resort
+GROUP BY Currency
+ORDER BY Total_Amount DESC;
+
+
+-- 4. Monthly P&L Statement
+SELECT
+YEAR(Arrival_Date) AS Year,
+MONTH(Arrival_Date) AS Month,
+SUM(Room_Rate) AS Room_Revenue,
+SUM([F&B_Revenue]) AS FandB_Revenue,
+SUM(Laundry_Revenue) AS Laundry_Revenue,
+SUM(Spa_Revenue) AS Spa_Revenue,
+SUM(Other_Revenue) AS Other_Revenue,
+SUM(OTA_Commission) AS OTA_Commission,
+SUM(Net_Revenue) AS Net_Revenue
+FROM resort
+WHERE Reservation_Status='Checked Out'
+GROUP BY YEAR(Arrival_Date), MONTH(Arrival_Date)
+ORDER BY Year, Month;
+
+
+-- 5. Tax Summary
+SELECT
+YEAR(Arrival_Date) AS Year,
+MONTH(Arrival_Date) AS Month,
+SUM(Tax_Amount) AS Total_Tax_Collected,
+AVG(Tax_Amount) AS Avg_Tax_Per_Booking
+FROM resort
+GROUP BY YEAR(Arrival_Date), MONTH(Arrival_Date)
+ORDER BY Year, Month;
+
+
+-- 6. Discount Analysis
+SELECT
+Discount_Percent,
+COUNT(*) AS Bookings,
+SUM(Total_Revenue) AS Revenue,
+AVG(Total_Revenue) AS Avg_Revenue
+FROM resort
+WHERE Discount_Percent > 0
+GROUP BY Discount_Percent
+ORDER BY Discount_Percent;
+```
+
+---
+
+# CATEGORY 4 — MARKETING DASHBOARD
+
+## File Name: marketing_dashboard.sql
+
+```sql
+-- =============================================
+-- MARKETING DASHBOARD SQL QUERIES
+-- =============================================
+
+-- 1. Channel Performance
+SELECT
+Source_Channel,
+COUNT(*) AS Bookings,
+SUM(Total_Revenue) AS Revenue,
+AVG(Total_Revenue) AS Avg_Booking_Value,
+SUM(OTA_Commission) AS Commission,
+(SUM(OTA_Commission)*100.0/SUM(Total_Revenue)) AS Commission_Rate
+FROM resort
+GROUP BY Source_Channel
+ORDER BY Revenue DESC;
+
+
+-- 2. Monthly Channel Trend
+SELECT
+YEAR(Arrival_Date) AS Year,
+MONTH(Arrival_Date) AS Month,
+Source_Channel,
+COUNT(*) AS Bookings,
+SUM(Total_Revenue) AS Revenue
+FROM resort
+GROUP BY YEAR(Arrival_Date), MONTH(Arrival_Date), Source_Channel
+ORDER BY Year, Month;
+
+
+-- 3. Travel Agent Performance
+SELECT
+Travel_Agent,
+COUNT(*) AS Bookings,
+SUM(Total_Revenue) AS Revenue
+FROM resort
+WHERE Travel_Agent IS NOT NULL
+GROUP BY Travel_Agent
+ORDER BY Revenue DESC;
+
+
+-- 4. Country Wise Guest Analysis
+SELECT
+Country,
+COUNT(*) AS Guests,
+SUM(Total_Revenue) AS Revenue,
+AVG(Total_Revenue) AS Avg_Spend
+FROM resort
+GROUP BY Country
+ORDER BY Revenue DESC;
+
+
+-- 5. International vs Domestic Guests
+SELECT
+YEAR(Arrival_Date) AS Year,
+MONTH(Arrival_Date) AS Month,
+CASE WHEN Country='India' THEN 'Domestic' ELSE 'International' END AS Guest_Type,
+COUNT(*) AS Bookings,
+SUM(Total_Revenue) AS Revenue
+FROM resort
+GROUP BY YEAR(Arrival_Date), MONTH(Arrival_Date),
+CASE WHEN Country='India' THEN 'Domestic' ELSE 'International' END;
+```
+
+---
+
+# CATEGORY 5 — HR & STAFF DASHBOARD
+
+## File Name: hr_dashboard.sql
+
+```sql
+-- =============================================
+-- HR DASHBOARD SQL QUERIES
+-- =============================================
+
+-- 1. Shift Wise Booking Volume
+SELECT
+Shift,
+COUNT(*) AS Bookings_Handled,
+SUM(Total_Revenue) AS Revenue_Generated
+FROM resort
+GROUP BY Shift
+ORDER BY Bookings_Handled DESC;
+
+
+-- 2. User Wise Performance
+SELECT
+Booking_User,
+Shift,
+COUNT(*) AS Bookings,
+SUM(Total_Revenue) AS Revenue
+FROM resort
+GROUP BY Booking_User, Shift
+ORDER BY Bookings DESC;
+
+
+-- 3. Peak Check-in Hours
+SELECT
+DATEPART(HOUR, Checkin_Time) AS Hour,
+COUNT(*) AS Checkins
+FROM resort
+WHERE Checkin_Time IS NOT NULL
+GROUP BY DATEPART(HOUR, Checkin_Time)
+ORDER BY Hour;
+
+
+-- 4. Peak Check-out Hours
+SELECT
+DATEPART(HOUR, Checkout_Time) AS Hour,
+COUNT(*) AS Checkouts
+FROM resort
+WHERE Checkout_Time IS NOT NULL
+GROUP BY DATEPART(HOUR, Checkout_Time)
+ORDER BY Hour;
+
+
+-- 5. Early Check-in & Late Check-out Report
+SELECT
+Reservation_ID,
+Guest_Name,
+Room_Number,
+Arrival_Date,
+Departure_Date,
+Checkin_Time,
+Checkout_Time,
+Early_Checkin,
+Late_Checkout
+FROM resort
+WHERE Early_Checkin='Yes'
+OR Late_Checkout='Yes'
+ORDER BY Arrival_Date DESC;
+```
+
+---
+
+# HOW TO UPLOAD THESE FILES TO GITHUB
+
+## Create These SQL Files Inside `/sql` Folder
+
+```text
+executive_dashboard.sql
+frontdesk_dashboard.sql
+finance_dashboard.sql
+marketing_dashboard.sql
+hr_dashboard.sql
+```
+
+## Then Copy SQL Queries Category Wise
+
+Paste:
+
+* Executive queries into `executive_dashboard.sql`
+* Front desk queries into `frontdesk_dashboard.sql`
+* Finance queries into `finance_dashboard.sql`
+* Marketing queries into `marketing_dashboard.sql`
+* HR queries into `hr_dashboard.sql`
+
+Then click:
+
+Commit Changes
