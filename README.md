@@ -139,10 +139,11 @@ All SQL queries are available in the `/sql` folder.
 
 # Demo Video
 
-Dashboard demo recording is available in the `/dashboard-recording` folder.
+Watch Full Dashboard Demo Here:
 
+https://youtu.be/l1CmQ8oLUG0?si=JrE4DvvqSqMM5gMD
 ---
 
 # Author
 
-Dr Bisht
+ Vimal Singh Bisht
